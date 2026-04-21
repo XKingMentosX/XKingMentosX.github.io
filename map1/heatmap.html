@@ -7,16 +7,8 @@
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
     />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"
-    />
     <link rel="stylesheet" href="css/styles.css" />
-    <title>Web GIS</title>
+    <title>Heatmap</title>
   </head>
   <body>
     <div class="banner">
@@ -24,9 +16,9 @@
     </div>
 
     <nav class="navbar" aria-label="Primary navigation">
-      <a class="active" href="index.html">Basic Map</a>
+      <a href="index.html">Basic Map</a>
       <a href="choroplethmap.html">Choropleth Map</a>
-      <a href="heatmap.html">Heatmap</a>
+      <a class="active" href="heatmap.html">Heatmap</a>
     </nav>
 
     <div class="page-title">
@@ -43,7 +35,7 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    <script src="js/javascript.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.min.js"></script>
+    <script src="js/heatmap.js"></script>
   </body>
 </html>
