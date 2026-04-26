@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+    <link rel="stylesheet" href="css/leaflet.css">
+    <style>
+    * { box-sizing: border-box; }
+    html, body, #map { width:100%; height:100%; padding:0; margin:0; }
+
+    /* ── Title top-left ── */
+    #titlebox {
+        position: absolute; top: 10px; left: 10px;
+        background: rgba(28,28,28,0.88);
+        padding: 12px 16px; border-radius: 4px;
+        font-family: Arial, sans-serif; z-index: 1001;
+        max-width: 260px; color: white;
+    }
+    #titlebox h2 { margin: 0 0 8px 0; font-size: 18px; line-height: 1.25; font-weight: bold; }
+    #titlebox p  { margin: 0; font-size: 10.5px; color: #bbb; line-height: 1.5; }
+
+    /* ── Legend bottom-left ── */
+    #legend {
+        position: absolute; bottom: 20px; left: 10px;
+        background: rgba(28,28,28,0.88);
+        padding: 12px 16px; border-radius: 4px;
+        font-family: Arial, sans-serif; font-size: 11px;
+        z-index: 1001; color: #ddd;
+        display: flex; gap: 24px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+    .leg-col h5 { margin: 0 0 7px 0; font-size: 11.5px; color: #fff; font-weight: bold; }
+    .leg-row { display:flex; align-items:center; margin: 4px 0; gap: 7px; }
+    .leg-circle { border-radius:50%; border:1px solid #888; flex-shrink:0; }
+    .leg-line { height:3px; border-radius:2px; flex-shrink:0; width:26px; }
+    .leg-label { color:#ccc; font-size:10.5px; }
+
+    /* ── Scale bar bottom-right ── */
+    #scalebar {
+        position: absolute; bottom: 28px; right: 160px;
+        z-index: 1001; font-family: Arial, sans-serif;
+        font-size: 10px; color: #eee;
+    }
+    #scalebar-line {
+        height: 4px; background: white;
+        border: 1px solid #555;
+        margin-bottom: 3px;
+        width: 120px;
+    }
+    #scalebar-labels {
+        display: flex; justify-content: space-between;
+        width: 120px;
+    }
+
+    /* ── North arrow top-right ── */
+    #northarrow {
+        position: absolute; top: 10px; right: 10px;
+        z-index: 1001; font-size: 28px;
+        color: white; text-shadow: 0 0 4px #000;
+        font-family: Arial, sans-serif;
+        background: rgba(28,28,28,0.7);
+        border-radius: 4px; padding: 4px 8px;
+        text-align: center; line-height: 1;
+    }
+
+    /* ── Date + speed bar ── */
+    #datebox {
+        position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+        background: rgba(28,28,28,0.8); color: #eee;
+        padding: 5px 16px; border-radius: 20px;
+        font-family: Arial, sans-serif; font-size: 12px;
+        z-index: 1001; white-space: nowrap;
+    }
+
+    /* ── Progress bar ── */
+    #progress-wrap {
+        position: absolute; bottom: 0; left: 0; right: 0;
+        height: 4px; background: rgba(0,0,0,0.4); z-index: 1002;
+    }
+    #progress-bar { height:100%; width:0%; background:#f5a623; }
+
+    /* ── Replay ── */
+    #replay {
+        position: absolute; bottom: 28px; right: 10px;
+        background: rgba(28,28,28,0.85); color: #eee;
+        border: 1px solid #555; border-radius: 4px;
+        padding: 5px 12px; font-size: 11px; cursor: pointer;
+        z-index: 1002; font-family: Arial, sans-serif;
+    }
+    #replay:hover { background: rgba(60,60,60,0.95); }
+
+    /* ── Stop tooltips ── */
+    .stop-tip {
+        background: white !important; color: black !important;
+        border: 1.5px solid #222 !important; border-radius: 4px !important;
+        font-family: Arial, sans-serif; font-size: 10px; font-weight: bold;
+        padding: 1px 5px; box-shadow: none !important; white-space: nowrap;
+    }
+    .stop-tip::before { display:none !important; }
+    .leaflet-tooltip-top.stop-tip::before { display:none !important; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+
+<!-- Title top-left -->
+<div id="titlebox">
+    <h2>Road Trip across the United States in April 2025</h2>
+    <p>This map shows a two-week road trip through the United States, recorded between April 13 and 27, 2025. The route is made up of over 40,000 GPS points and covers a large part of the country.</p>
+</div>
+
+<!-- Legend bottom-left -->
+<div id="legend">
+    <div class="leg-col">
+        <h5>Stop locations</h5>
+        <div class="leg-row"><div class="leg-circle" style="width:7px;height:7px;background:#006064;"></div><span class="leg-label">10–30 min</span></div>
+        <div class="leg-row"><div class="leg-circle" style="width:10px;height:10px;background:#0097a7;"></div><span class="leg-label">30–60 min</span></div>
+        <div class="leg-row"><div class="leg-circle" style="width:13px;height:13px;background:#00bcd4;"></div><span class="leg-label">1–2 hours</span></div>
+        <div class="leg-row"><div class="leg-circle" style="width:17px;height:17px;background:#4dd9e8;"></div><span class="leg-label">2–8 hours</span></div>
+        <div class="leg-row"><div class="leg-circle" style="width:21px;height:21px;background:#b2f5fa;"></div><span class="leg-label">&gt; 8 hours</span></div>
+    </div>
+    <div class="leg-col">
+        <h5>Route — speed (km/h)</h5>
+        <div class="leg-row"><div class="leg-line" style="background:#1a9641;"></div><span class="leg-label">Stopped (0–5 km/h)</span></div>
+        <div class="leg-row"><div class="leg-line" style="background:#a6d96a;"></div><span class="leg-label">Slow (5–30 km/h)</span></div>
+        <div class="leg-row"><div class="leg-line" style="background:#d4c600;"></div><span class="leg-label">Urban (30–60 km/h)</span></div>
+        <div class="leg-row"><div class="leg-line" style="background:#f5a623;"></div><span class="leg-label">Highway (60–100 km/h)</span></div>
+        <div class="leg-row"><div class="leg-line" style="background:#e8602c;"></div><span class="leg-label">Fast (100–120 km/h)</span></div>
+        <div class="leg-row"><div class="leg-line" style="background:#d73027;"></div><span class="leg-label">Very fast (&gt;120 km/h)</span></div>
+    </div>
+</div>
+
+<!-- Scale bar -->
+<div id="scalebar">
+    <div id="scalebar-line"></div>
+    <div id="scalebar-labels"><span>0</span><span id="scale-km">200 km</span></div>
+</div>
+
+<!-- North arrow -->
+<div id="northarrow">↑<br><small style="font-size:9px">N</small></div>
+
+<!-- Date indicator -->
+<div id="datebox">April 13, 2025 — start</div>
+
+<!-- Replay -->
+<button id="replay" onclick="startAnimation()">⟳ Replay</button>
+
+<!-- Progress -->
+<div id="progress-wrap"><div id="progress-bar"></div></div>
+
+<script src="js/leaflet.js"></script>
+<script src="data/route_anim.js"></script>
+<script src="data/stops_anim.js"></script>
+<script>
+// ── Map ───────────────────────────────────────────────────────
+var map = L.map('map', { zoomControl: true, maxZoom: 14, minZoom: 3 })
+           .setView([36.5, -107.0], 5);
+
+L.tileLayer('https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
+    opacity: 0.85, maxZoom: 18,
+    attribution: '© CartoDB © OpenStreetMap'
+}).addTo(map);
+
+// ── Dynamic scale bar ────────────────────────────────────────
+function updateScalebar() {
+    var center = map.getCenter();
+    var p1 = map.latLngToContainerPoint(center);
+    var p2 = L.point(p1.x + 120, p1.y);
+    var ll2 = map.containerPointToLatLng(p2);
+    var dist = center.distanceTo(ll2) / 1000;
+    document.getElementById('scale-km').textContent = Math.round(dist) + ' km';
+}
+map.on('zoomend moveend', updateScalebar);
+updateScalebar();
+
+// ── Colour helpers ────────────────────────────────────────────
+function speedColor(spd) {
+    if (spd <=   5) return '#1a9641';
+    if (spd <=  30) return '#a6d96a';
+    if (spd <=  60) return '#d4c600';
+    if (spd <= 100) return '#f5a623';
+    if (spd <= 120) return '#e8602c';
+    return '#d73027';
+}
+function speedWeight(spd) {
+    if (spd <=   5) return 1.5;
+    if (spd <=  30) return 2.0;
+    if (spd <=  60) return 2.5;
+    if (spd <= 100) return 3.0;
+    if (spd <= 120) return 3.5;
+    return 4.0;
+}
+
+// ── Stop style — radius scaled logarithmically so short+long stops both visible
+function stopStyle(dur) {
+    // log scale: 10min→4px, 60min→7px, 120min→9px, 480min→13px, 1000+min→18px
+    var r = Math.round(4 + 14 * (Math.log(dur) - Math.log(10)) / (Math.log(1300) - Math.log(10)));
+    r = Math.max(4, Math.min(r, 18));
+    var c;
+    if (dur <=  30) c = '#006064';
+    else if (dur <=  60) c = '#0097a7';
+    else if (dur <= 120) c = '#00bcd4';
+    else if (dur <= 480) c = '#4dd9e8';
+    else c = '#b2f5fa';
+    return { r: r, c: c };
+}
+
+function durLabel(d) {
+    if (d >= 60) return (Math.round(d / 60 * 10) / 10) + ' hours';
+    return Math.round(d) + ' min';
+}
+
+// ── Layers ────────────────────────────────────────────────────
+var routeLayer = L.layerGroup().addTo(map);
+var stopLayer  = L.layerGroup().addTo(map);
+var animTimeout = null;
+var DURATION_MS = 20000;
+
+// ── Animation ─────────────────────────────────────────────────
+function startAnimation() {
+    routeLayer.clearLayers();
+    stopLayer.clearLayers();
+    if (animTimeout) clearTimeout(animTimeout);
+    document.getElementById('progress-bar').style.width = '0%';
+    document.getElementById('datebox').textContent = 'April 13, 2025 — start';
+
+    var n       = routePoints.length;
+    var msPerPt = DURATION_MS / n;
+
+    // Map each stop to nearest route point index
+    var stopsMap = {};
+    stopPoints.forEach(function(stop) {
+        var bestIdx = 0, bestDist = Infinity;
+        routePoints.forEach(function(pt, i) {
+            var d = (pt.lat - stop.lat) * (pt.lat - stop.lat) +
+                    (pt.lon - stop.lon) * (pt.lon - stop.lon);
+            if (d < bestDist) { bestDist = d; bestIdx = i; }
+        });
+        if (!stopsMap[bestIdx]) stopsMap[bestIdx] = [];
+        stopsMap[bestIdx].push(stop);
+    });
+
+    var i = 0, prevPt = null;
+    var startDate = new Date('2025-04-13');
+    var totalMs   = 14 * 24 * 60 * 60 * 1000;
+
+    function step() {
+        if (i >= n) {
+            document.getElementById('progress-bar').style.width = '100%';
+            document.getElementById('datebox').textContent = 'April 27, 2025 — trip complete';
+            return;
+        }
+
+        var pt  = routePoints[i];
+        document.getElementById('progress-bar').style.width = (i / n * 100) + '%';
+
+        // Route segment
+        if (prevPt) {
+            L.polyline(
+                [[prevPt.lat, prevPt.lon], [pt.lat, pt.lon]],
+                { color: speedColor(pt.spd), weight: speedWeight(pt.spd),
+                  opacity: 1, lineCap: 'round', lineJoin: 'round' }
+            ).addTo(routeLayer);
+        }
+
+        // Stop bubbles
+        if (stopsMap[i]) {
+            stopsMap[i].forEach(function(stop) {
+                var style  = stopStyle(stop.duration);
+                var circle = L.circleMarker([stop.lat, stop.lon], {
+                    radius: 1,
+                    color: '#444', weight: 1,
+                    fillColor: style.c, fillOpacity: 0.9
+                }).addTo(stopLayer);
+
+                circle.bindTooltip(durLabel(stop.duration), {
+                    permanent: true, direction: 'top',
+                    offset: [0, -(style.r + 3)],
+                    className: 'stop-tip'
+                });
+
+                // Grow over 25 steps
+                var g = 0;
+                function grow() {
+                    g++;
+                    circle.setRadius(Math.max(1, Math.round((g / 25) * style.r)));
+                    if (g < 25) setTimeout(grow, 24);
+                }
+                grow();
+            });
+        }
+
+        // Date display
+        var curDate = new Date(startDate.getTime() + (i / n) * totalMs);
+        document.getElementById('datebox').textContent =
+            curDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) +
+            '  ·  ' + Math.round(pt.spd) + ' km/h';
+
+        prevPt = pt;
+        i++;
+        animTimeout = setTimeout(step, msPerPt);
+    }
+
+    step();
+}
+
+window.onload = function() { setTimeout(startAnimation, 600); };
+</script>
+</body>
+</html>
